@@ -184,8 +184,8 @@ def _dsd_kernel(
         a = tl.load(pa)
         b = tl.load(pb)
         if(column == 0 and pid_m == 0):
-            triton.language.device_print("a",a)
-            triton.language.device_print("b",b)
+            tl.device_print("a",a)
+            tl.device_print("b",b)
         acc += tl.dot(a, b, out_dtype=tl.float32)
         pa += inc_a
         pb += inc_b * stride_bk
@@ -194,9 +194,11 @@ def _dsd_kernel(
         inc_a = tl.multiple_of(inc_a, 8)
         inc_b = tl.load(pinc)
         inc_b = tl.multiple_of(inc_b, 8) 
+    if(column == 0 and pid_m == 0):
+        tl.device_print("acc",acc)   
     c = acc.to(C.dtype.element_ty)
     if(column == 0 and pid_m == 0):
-            triton.language.device_print("c",c)
+        tl.device_print("c",c)
     # initialize pointers to C
     offs_cm = column * TILE_M + tl.arange(0, TILE_M)
     offs_cn = pid_m * TILE_N + tl.arange(0, TILE_N)
