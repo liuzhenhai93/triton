@@ -183,6 +183,9 @@ def _dsd_kernel(
     for k in range(K, 0, -TILE_K):
         a = tl.load(pa)
         b = tl.load(pb)
+        if(column == 0 and pid_m == 0):
+            triton.language.device_print("a",a)
+            triton.language.device_print("b",b)
         acc += tl.dot(a, b, out_dtype=tl.float32)
         pa += inc_a
         pb += inc_b * stride_bk
@@ -190,8 +193,10 @@ def _dsd_kernel(
         inc_a = tl.load(pinc + 1)
         inc_a = tl.multiple_of(inc_a, 8)
         inc_b = tl.load(pinc)
-        inc_b = tl.multiple_of(inc_b, 8)
+        inc_b = tl.multiple_of(inc_b, 8) 
     c = acc.to(C.dtype.element_ty)
+    if(column == 0 and pid_m == 0):
+            triton.language.device_print("c",c)
     # initialize pointers to C
     offs_cm = column * TILE_M + tl.arange(0, TILE_M)
     offs_cn = pid_m * TILE_N + tl.arange(0, TILE_N)
@@ -274,7 +279,9 @@ def dsd_lut(layout, block, step, trans, device):
         nnz = layout.nonzero(as_tuple=False)
     else:
         nnz = layout.transpose(1, 2).nonzero(as_tuple=False)
+    # total block    
     num_blocks = nnz.size(0)
+    # offsets of row
     offsets = torch.zeros_like(sizes)
     offsets[1:] = torch.cumsum(sizes[:-1], dim=0)
     offsets = torch.min(offsets, (num_blocks - 1) * torch.ones_like(offsets))
